@@ -7,6 +7,7 @@
 - **Python 3.13**
 - **FastAPI** — async REST API
 - **uv** — package management & virtual environment
+- **poethepoet** — task runner
 - **mypy + pyright** — strict type checking
 - **ruff** — linting & formatting
 - **pytest** — testing
@@ -27,22 +28,12 @@ uv run fastapi run          # production
 API available at `http://127.0.0.1:8000`
 Docs at `http://127.0.0.1:8000/docs`
 
-## Test
+## Tasks
 
 ```bash
-uv run pytest
-```
-
-## Type check
-
-```bash
-uv run mypy
-uv run pyright
-```
-
-## Lint & format
-
-```bash
-uv run ruff check .
-uv run ruff format .
+uv run poe test         # run tests
+uv run poe lint         # ruff check
+uv run poe format       # ruff format
+uv run poe typecheck    # mypy + pyright
+uv run poe check        # lint + typecheck + test
 ```

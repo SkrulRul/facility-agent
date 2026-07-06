@@ -10,9 +10,20 @@ dependencies = [
     "uvicorn[standard]>=0.34.0",
 ]
 
+[tool.poe.tasks]
+install = "uv sync"
+lint = "ruff check ."
+format = "ruff format ."
+_mypy = "mypy"
+_pyright = "pyright"
+typecheck = ["_mypy", "_pyright"]
+test = "pytest"
+check = ["lint", "typecheck", "test"]
+
 [dependency-groups]
 dev = [
     "mypy>=1.15.0",
+    "poethepoet>=0.48.0",
     "pyright>=1.1.400",
     "ruff>=0.11.0",
 ]
