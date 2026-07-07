@@ -26,17 +26,17 @@ class FixedInterestTerms(BaseModel):
 
     type: Literal["fixed"]
     rate_pct: Decimal
-    day_count_convention: str
+    day_count_convention: Literal["ACT/360", "ACT/365", "30/360"]
 
 
 class FloatingInterestTerms(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True)
 
     type: Literal["floating"]
-    reference_rate: str
+    reference_rate: Literal["SOFR", "EURIBOR", "ESTR"]
     margin_pct: Decimal  # may be negative
-    reset_frequency: str
-    day_count_convention: str
+    reset_frequency: Literal["monthly", "quarterly"]
+    day_count_convention: Literal["ACT/360", "ACT/365", "30/360"]
 
 
 InterestTerms = Annotated[
@@ -78,9 +78,10 @@ class FinancialCovenant(BaseModel):
     type: Literal["financial"]
     id: UUID
     description: str
-    financial_metric: str
+    financial_metric: Literal["leverage_ratio", "interest_cover_ratio", "dscr"]
+    operator: Literal["<=", ">=", "<", ">"]
     threshold: Decimal
-    frequency: str
+    frequency: Literal["quarterly", "annually"]
 
 
 class NonFinancialCovenant(BaseModel):
@@ -88,8 +89,8 @@ class NonFinancialCovenant(BaseModel):
 
     type: Literal["non_financial"]
     id: UUID
+    category: Literal["reporting", "negative_pledge", "change_of_control", "restricted_payments"]
     description: str
-    obligation: str
 
 
 Covenant = Annotated[
@@ -104,7 +105,7 @@ class CovenantTestResult(BaseModel):
     id: UUID
     covenant_id: UUID
     test_date: date
-    result: Literal["pass", "fail"]
+    result: Literal["pass", "fail", "waived"]
     tested_by: str
 
 
@@ -113,7 +114,10 @@ class DefaultEvent(BaseModel):
     model_config = ConfigDict(strict=True, validate_assignment=True)
 
     id: UUID
-    event_type: Literal["payment_default", "covenant_breach", "cross_default", "misrepresentation"]
+    event_type: Literal[
+        "payment_default", "covenant_breach", "cross_default",
+        "insolvency", "misrepresentation", "change_of_control",
+    ]
     occurred_date: date
     recorded_at: datetime
     related_covenant_id: UUID | None = None
@@ -142,7 +146,7 @@ class FacilityAgreement(BaseModel):
     maturity_date: date
     currency: Currency
     facility_amount: Decimal
-    facility_type: Literal["term_loan", "revolving", "bridge"]
+    facility_type: Literal["term_loan", "revolving_credit"]
     borrower_id: UUID
     lender_ids: list[UUID]
     facility_agent_id: UUID | None = None
@@ -220,6 +224,6 @@ def compute_agreement_status(agreement: FacilityAgreement) -> AgreementStatus:
     """
     if any(event.is_continuing for event in agreement.default_events):
         return "defaulted"
-    if agreement.maturity_date < date.today():
+    if agreement.maturity_date <= date.today():
         return "matured"
     return agreement.get_base_status()

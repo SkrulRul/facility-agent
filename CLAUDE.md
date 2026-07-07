@@ -193,7 +193,7 @@ Note: PRD §5 distinguishes shape errors (400) from business-rule errors (422). 
 
 **Alternatives:** Immutable event log with new entries for each status change. Rejected: over-engineered for Phase 1 scope; no second consumer.
 
-**Consequences:** Forward-only transition enforcement (e.g., `outstanding → remedied` only) is a service-layer concern (Phase 2). The domain model allows direct field assignment — the service layer guards the sequence.
+**Consequences:** Forward-only transition enforcement (e.g., `outstanding → remedied` only) is a service-layer concern (Phase 2). The domain model allows direct field assignment — the service layer guards the sequence. Pydantic's `@field_validator` with `validate_assignment=True` does not receive the previous value, so direction enforcement cannot be expressed as a domain validator; the service layer checks `if event.remediation_status == "remedied": raise` before any write. If stronger domain-level guarding is needed, the pattern from `FacilityAgreement` (`PrivateAttr` + named transition methods) can be applied to `DefaultEvent` in Phase 2.
 
 ---
 
@@ -211,10 +211,22 @@ Note: PRD §5 distinguishes shape errors (400) from business-rule errors (422). 
 
 ### ADR-011 — `matured` status uses `date.today()`
 
-**Decision:** `compute_agreement_status()` compares `agreement.maturity_date < date.today()`. Not injected.
+**Decision:** `compute_agreement_status()` compares `agreement.maturity_date <= date.today()`. Not injected.
 
 **Drivers:** Simplicity. `date.today()` is a side effect, not a dependency we need to swap for this project.
 
 **Alternatives:** Inject a clock. Rejected: YAGNI; one consumer.
 
 **Consequences:** Phase 2 tests that exercise `matured` status must freeze time using `freezegun` (`@freeze_time("2030-01-01")`). Document in test file when first used.
+
+---
+
+### ADR-012 — `Literal` enums for all bounded domain strings
+
+**Decision:** Every string field with a finite set of valid values uses `Literal[...]` instead of `str`. Applied to: `day_count_convention` (both interest terms), `reference_rate`, `reset_frequency`, `financial_metric`, `FinancialCovenant.operator`, `FinancialCovenant.frequency`, `NonFinancialCovenant.category`, `DefaultEvent.event_type`, `FacilityAgreement.facility_type`.
+
+**Drivers:** Consistency with how `Currency`, `AgreementStatus`, `Party.role`, and all discriminator `type` fields are already typed. Under `strict=True`, a `str` field accepts any string — `FloatingInterestTerms(reference_rate="banana")` would pass all static and runtime checks. `Literal` gives invalid-value rejection at the shape-validation level (HTTP 422) with zero additional code.
+
+**Alternatives:** `str` + `@field_validator` — runtime-only, loses static exhaustiveness, duplicates the constraint. `Enum` class — more verbose, no added value for pure-string labels with one consumer. Both rejected: YAGNI.
+
+**Consequences:** Adding a new valid value (new reference rate, new event type) is a one-line Literal change. `FinancialCovenant.operator` is stored as informational metadata — no auto-evaluation of threshold conditions occurs in v1 (test results are manually recorded by analysts per §3.6); the field is available for UI display and future auto-evaluation.
