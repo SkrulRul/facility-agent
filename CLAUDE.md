@@ -1,6 +1,10 @@
 # CLAUDE.md
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Related documents:**
+- [`docs/PRD.md`](docs/PRD.md) — functional specification (domain entities, API behavior, non-functional requirements)
+- [`docs/adr/`](docs/adr/) — Architecture Decision Records (one file per decision, numbered `NNNN-slug.md`)
+
 ## Commands
 
 ```bash
@@ -39,7 +43,7 @@ All domain models live in `app/domain.py` (single file, dependency-ordered top-t
 
 **Why single file:** The domain uses discriminated union members (`InterestTerms`, `RepaymentSchedule`, `Covenant`) that reference each other and the aggregate root. A single file eliminates circular-import risk entirely and makes dependency ordering trivial. Pydantic v2 forward references resolve via `from __future__ import annotations` at the top.
 
-**When to split:** If the domain grows beyond ~15 types, split into `app/domain/` package with careful import ordering in `__init__.py`. Document the split decision as an ADR.
+**When to split:** If the domain grows beyond ~15 types, split into `app/domain/` package with careful import ordering in `__init__.py`. Document the split decision as a new file in `docs/adr/`.
 
 ### Layering
 
@@ -66,7 +70,7 @@ Dependencies flow **inward only**: routers → services → domain. Domain model
 - No direct Pydantic `model_validate` calls on raw dicts from HTTP — that belongs in the router layer.
 
 **Repository layer (Phase 2+):**
-- In-memory storage only for this project (explicitly out of scope: SQLAlchemy, database, persistence). See PRD §7.
+- In-memory storage only for this project (explicitly out of scope: SQLAlchemy, database, persistence). See [`docs/PRD.md` §7](docs/PRD.md#7-explicitly-out-of-scope-for-v1).
 - Repositories return domain model instances, not dicts or ORM objects.
 
 ### Error type policy
@@ -78,7 +82,7 @@ Dependencies flow **inward only**: routers → services → domain. Domain model
 | Not found | Service raises (Phase 2) | 404 Not Found |
 | Conflict / forbidden transition | Service raises (Phase 2) | 409 Conflict |
 
-Note: PRD §5 distinguishes shape errors (400) from business-rule errors (422). The current policy maps both to 422 via Pydantic's default FastAPI integration. This will be refined in the API phase.
+Note: [`docs/PRD.md` §5](docs/PRD.md#5-api-behavior-requestresponse-error-handling) distinguishes shape errors (400) from business-rule errors (422). The current policy maps both to 422 via Pydantic's default FastAPI integration — see [ADR-0008](docs/adr/0008-business-rule-validation-to-422.md).
 
 ### Naming conventions
 
@@ -103,130 +107,21 @@ Note: PRD §5 distinguishes shape errors (400) from business-rule errors (422). 
 
 ## Architecture Decision Records
 
-### ADR-002 — `is_continuing` uses Option A
+Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug.md`). This table is an index only — read the linked file for Decision/Drivers/Alternatives/Consequences.
 
-**Decision:** `DefaultEvent.is_continuing` = `not (remediation_status == "remedied" or waiver_status == "waived")`. Either remedy OR waiver clears the default.
+| ID | Title | Phase |
+|---|---|---|
+| [0001](docs/adr/0001-invoices-out-of-scope.md) | Invoices out of scope for v1 | — |
+| [0002](docs/adr/0002-is-continuing-option-a.md) | `is_continuing` uses Option A | 1 |
+| [0003](docs/adr/0003-facility-agreement-status-computed-overlay.md) | `FacilityAgreement.status` → `_base_status` + `@computed_field` overlay | 1 |
+| [0004](docs/adr/0004-covenant-test-result-referenced-not-embedded.md) | `CovenantTestResult` referenced on `FacilityAgreement`, not embedded | 1 |
+| [0005](docs/adr/0005-no-pytest-in-phase-1.md) | No pytest in Phase 1 | 1 |
+| [0006](docs/adr/0006-claude-md-comprehensive-layering-doc.md) | CLAUDE.md v1: comprehensive layering doc | 1 |
+| [0007](docs/adr/0007-single-domain-module-no-package-split.md) | Single `app/domain.py` (no package split) | 1 |
+| [0008](docs/adr/0008-business-rule-validation-to-422.md) | Business-rule validation in Pydantic models → HTTP 422 | 1 |
+| [0009](docs/adr/0009-default-event-mutable.md) | `DefaultEvent` is mutable (`validate_assignment=True`) | 1 |
+| [0010](docs/adr/0010-audit-timestamps-in-model-layer.md) | Audit timestamps in model layer | 1 |
+| [0011](docs/adr/0011-matured-status-uses-date-today.md) | `matured` status uses `date.today()` | 1 |
+| [0012](docs/adr/0012-literal-enums-for-bounded-domain-strings.md) | `Literal` enums for all bounded domain strings | 1 |
 
-**Drivers:** PRD-recommended; simpler than Option B (AND logic); dominant LMA market drafting convention.
-
-**Alternatives:** Option B — both remedy AND waiver required to clear. Rejected: stricter than market convention, no second consumer today.
-
-**Consequences:** A waiver alone (without formal remediation) clears `is_continuing`. Appropriate for LMA market drafting; document if requirements differ.
-
----
-
-### ADR-003 — `FacilityAgreement.status` uses `_base_status` + `@computed_field` overlay (Option A)
-
-**Decision:** `_base_status: PrivateAttr` stores `Literal["draft","active","terminated"]`. `status` computed field overlays `"defaulted"` (any continuing default event) and `"matured"` (`maturity_date < date.today()`). Defaulted takes priority over matured.
-
-**Drivers:** Mixed lifecycle: `draft → active → terminated` are manual transitions; `defaulted` and `matured` are derived from events and dates. Can't model all five states as purely computed without injection.
-
-**Alternatives:** Option C — module-level `compute_agreement_status()` function (present in codebase as a contrast pattern; `status` delegates to it).
-
-**Consequences:** `status` cannot be set to `"defaulted"` or `"matured"` from outside the model. `_base_status` accepts only `draft/active/terminated`. `matured` uses `date.today()` — Phase 2 tests freeze time with `freezegun`.
-
----
-
-### ADR-004 — `CovenantTestResult` referenced on `FacilityAgreement`, not embedded in `Covenant`
-
-**Decision:** `FacilityAgreement.covenant_test_results: list[CovenantTestResult]`, each with `covenant_id: UUID`. Compliance derived via `is_in_covenant_breach` computed field.
-
-**Drivers:** PRD field naming (`covenant_id`) implies separate storage. Cleaner for future normalization. `Covenant` has no stored pass/fail state (PRD §3.5).
-
-**Alternatives:** Embed test results in `Covenant`. Rejected: couples the value object to mutable test history; harder to normalize.
-
-**Consequences:** `is_in_covenant_breach` iterates `covenant_test_results` keyed by `covenant_id`, returning the latest result per covenant. Same-date ties: strictly-later semantics (`test_date >` previous), so a same-date pass does not clear a same-date fail (to be reviewed when result recording is implemented in Phase 2).
-
----
-
-### ADR-005 — No pytest in Phase 1
-
-**Decision:** Phase 1 exit gate is `uv run poe typecheck` (mypy strict + pyright strict) and `uv run poe lint` only. No pytest.
-
-**Drivers:** Tests are the Phase 2 learning focus. Phase 1 focuses on Pydantic v2 model patterns.
-
-**Alternatives:** Add validator tests in Phase 1. Rejected: scope boundary deliberate. Note: the type checker verifies structural correctness only — behavioral correctness of `@model_validator` runtime logic is the Phase 2 pytest scope.
-
-**Consequences:** ~10 runtime validators are structurally sound but behaviorally unverified until Phase 2.
-
----
-
-### ADR-006 — CLAUDE.md v1: comprehensive layering doc
-
-**Decision:** CLAUDE.md includes full domain/service/repository boundary intent, per-layer Claude restrictions, naming conventions, and error type policy.
-
-**Drivers:** Phase 1 training objective: Claude drafts layering constraints that will govern all subsequent phases.
-
-**Consequences:** This section grows as each phase is implemented. Service-layer and repository-layer restrictions are intentionally forward-looking stubs; fill in during Phase 2 implementation.
-
----
-
-### ADR-007 — Single `app/domain.py` (no package split)
-
-**Decision:** All domain models in one file, dependency-ordered top-to-bottom.
-
-**Drivers:** 9 model types, one developer, no existing circular-import pressure. Forward refs resolved by `from __future__ import annotations`.
-
-**Alternatives:** `app/domain/` package with one file per entity/group. Rejected: real circular-import risk between union members and aggregate root; premature for current scope.
-
-**Consequences:** File is ~290 lines. Revisit if domain exceeds ~15 types or multiple developers contend on the file.
-
----
-
-### ADR-008 — Business-rule validation in Pydantic models → HTTP 422
-
-**Decision:** All field and cross-field business-rule checks live in `@model_validator` or `@field_validator` in the domain layer. Violations raise `ValueError`; Pydantic wraps to `ValidationError`; FastAPI returns HTTP 422.
-
-**Drivers:** Keeps validation co-located with the model it protects. Consistent with PRD §5 "shape/type errors are 422."
-
-**Alternatives:** Service-layer validation returning HTTP 400. Deferred: the 400 vs 422 split for intentional business rejections vs malformed input will be refined in the API phase.
-
-**Consequences:** Current policy: all domain violations are 422. The PRD §5 distinction (shape error = 400, business rule = 422) is a follow-up for the API phase.
-
----
-
-### ADR-009 — `DefaultEvent` is mutable (`validate_assignment=True`)
-
-**Decision:** `DefaultEvent.model_config = ConfigDict(strict=True, validate_assignment=True)`. NOT frozen. `remediation_status` and `waiver_status` are updated in-place. `is_continuing` recomputes on access.
-
-**Drivers:** A default event's remediation and waiver status change after the event is recorded. Frozen would prevent this.
-
-**Alternatives:** Immutable event log with new entries for each status change. Rejected: over-engineered for Phase 1 scope; no second consumer.
-
-**Consequences:** Forward-only transition enforcement (e.g., `outstanding → remedied` only) is a service-layer concern (Phase 2). The domain model allows direct field assignment — the service layer guards the sequence. Pydantic's `@field_validator` with `validate_assignment=True` does not receive the previous value, so direction enforcement cannot be expressed as a domain validator; the service layer checks `if event.remediation_status == "remedied": raise` before any write. If stronger domain-level guarding is needed, the pattern from `FacilityAgreement` (`PrivateAttr` + named transition methods) can be applied to `DefaultEvent` in Phase 2.
-
----
-
-### ADR-010 — Audit timestamps in model layer
-
-**Decision:** `FacilityAgreement.created_at: datetime` and `DefaultEvent.recorded_at: datetime` required at construction time. PRD §6 audit trail requirement.
-
-**Drivers:** PRD §6 requires an audit trail for all domain events.
-
-**Alternatives:** Add timestamps in the service layer. Rejected: moves a model-level invariant out of the model.
-
-**Consequences:** Both fields are required (no default). Caller supplies the timestamp. Phase 2 tests may use `datetime.now(UTC)` or a fixed datetime for reproducibility.
-
----
-
-### ADR-011 — `matured` status uses `date.today()`
-
-**Decision:** `compute_agreement_status()` compares `agreement.maturity_date <= date.today()`. Not injected.
-
-**Drivers:** Simplicity. `date.today()` is a side effect, not a dependency we need to swap for this project.
-
-**Alternatives:** Inject a clock. Rejected: YAGNI; one consumer.
-
-**Consequences:** Phase 2 tests that exercise `matured` status must freeze time using `freezegun` (`@freeze_time("2030-01-01")`). Document in test file when first used.
-
----
-
-### ADR-012 — `Literal` enums for all bounded domain strings
-
-**Decision:** Every string field with a finite set of valid values uses `Literal[...]` instead of `str`. Applied to: `day_count_convention` (both interest terms), `reference_rate`, `reset_frequency`, `financial_metric`, `FinancialCovenant.operator`, `FinancialCovenant.frequency`, `NonFinancialCovenant.category`, `DefaultEvent.event_type`, `FacilityAgreement.facility_type`.
-
-**Drivers:** Consistency with how `Currency`, `AgreementStatus`, `Party.role`, and all discriminator `type` fields are already typed. Under `strict=True`, a `str` field accepts any string — `FloatingInterestTerms(reference_rate="banana")` would pass all static and runtime checks. `Literal` gives invalid-value rejection at the shape-validation level (HTTP 422) with zero additional code.
-
-**Alternatives:** `str` + `@field_validator` — runtime-only, loses static exhaustiveness, duplicates the constraint. `Enum` class — more verbose, no added value for pure-string labels with one consumer. Both rejected: YAGNI.
-
-**Consequences:** Adding a new valid value (new reference rate, new event type) is a one-line Literal change. `FinancialCovenant.operator` is stored as informational metadata — no auto-evaluation of threshold conditions occurs in v1 (test results are manually recorded by analysts per §3.6); the field is available for UI display and future auto-evaluation.
+New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
