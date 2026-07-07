@@ -41,7 +41,8 @@ htmlcov/
 .zed/
 
 # AI agents & Claude Code
-.claude/
+.claude/*
+!.claude/agents/
 .omc/
 .aider*
 .copilot/

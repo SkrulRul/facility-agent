@@ -65,13 +65,17 @@ Dependencies flow **inward only**: routers → services → domain. Domain model
 - Business-rule violations raise `ValueError` inside `@model_validator` — Pydantic wraps these into `ValidationError`, FastAPI returns HTTP 422.
 - No database imports, no HTTP client imports, no external I/O.
 
-**Service layer (Phase 2+):**
+**Service layer:**
 - Owns forward-only state transitions (`draft → active → terminated`). Domain models provide `activate()` / `terminate()` as transition helpers; the service enforces preconditions before calling them.
 - No direct Pydantic `model_validate` calls on raw dicts from HTTP — that belongs in the router layer.
+- `AgreementService` owns all filtering and pagination (`status`, `borrower_id`, `in_covenant_breach`, `limit`/`offset`) — the repository has no query surface for this.
+- Raises `AgreementNotFoundError` / `CovenantNotFoundError` (subclassing `DomainNotFoundError`) for missing entities; a FastAPI exception handler in `app/main.py` maps `DomainNotFoundError` to HTTP 404.
 
-**Repository layer (Phase 2+):**
+**Repository layer:**
 - In-memory storage only for this project (explicitly out of scope: SQLAlchemy, database, persistence). See [`docs/PRD.md` §7](docs/PRD.md#7-explicitly-out-of-scope-for-v1).
+- `AgreementRepository` is a `Protocol` (structural typing) with exactly three methods: `add`, `get`, `list_all`. No `update`/`save` — see [ADR-0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md).
 - Repositories return domain model instances, not dicts or ORM objects.
+- DI wiring lives in `app/dependencies.py`: routes depend on `Depends(get_agreement_service)` (or similar), backed by a singleton repository instance — never instantiated directly in a route handler.
 
 ### Error type policy
 
@@ -123,5 +127,7 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0010](docs/adr/0010-audit-timestamps-in-model-layer.md) | Audit timestamps in model layer | 1 |
 | [0011](docs/adr/0011-matured-status-uses-date-today.md) | `matured` status uses `date.today()` | 1 |
 | [0012](docs/adr/0012-literal-enums-for-bounded-domain-strings.md) | `Literal` enums for all bounded domain strings | 1 |
+| [0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md) | In-memory repository persists by mutation-by-reference (no `update`/`save`) | 2 |
+| [0014](docs/adr/0014-sync-by-default-no-real-io.md) | Sync by default: no real I/O in Phase 2 | 2 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.

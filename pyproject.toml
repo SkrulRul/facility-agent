@@ -28,6 +28,7 @@ dev = [
     "ruff>=0.11.0",
 ]
 test = [
+    "freezegun>=1.5.0",
     "httpx2>=2.5.0",
     "pytest>=9.1.1",
 ]
