@@ -5,8 +5,10 @@ description = "Facility management agent API"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "anthropic>=0.40.0",
     "fastapi[standard]>=0.115.0",
     "pydantic>=2.13.4",
+    "pydantic-settings>=2.5.0",
     "uvicorn[standard]>=0.34.0",
 ]
 
@@ -31,6 +33,7 @@ test = [
     "freezegun>=1.5.0",
     "httpx2>=2.5.0",
     "pytest>=9.1.1",
+    "pytest-asyncio>=0.24.0",
 ]
 
 [tool.uv]
@@ -55,6 +58,7 @@ venv = ".venv"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short --strict-markers"
+asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100

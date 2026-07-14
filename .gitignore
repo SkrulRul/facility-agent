@@ -43,6 +43,7 @@ htmlcov/
 # AI agents & Claude Code
 .claude/*
 !.claude/agents/
+!.claude/skills/
 .omc/
 .aider*
 .copilot/

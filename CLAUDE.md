@@ -56,6 +56,8 @@ app/routers/        ← FastAPI routes (Phase 2+): HTTP interface, calls service
 
 Dependencies flow **inward only**: routers → services → domain. Domain models have no imports from services, repositories, or routers.
 
+`app/config.py` (Phase 3+) holds runtime settings (`pydantic-settings`), not domain state. `app/extraction_targets/` (Phase 3+) holds Pydantic models produced by the LLM extraction pipeline/Skill — these are extraction outputs, not the domain aggregate, so they live outside `app/domain.py`.
+
 ### Per-layer restrictions
 
 **Domain layer (`app/domain.py`):**
@@ -129,5 +131,6 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0012](docs/adr/0012-literal-enums-for-bounded-domain-strings.md) | `Literal` enums for all bounded domain strings | 1 |
 | [0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md) | In-memory repository persists by mutation-by-reference (no `update`/`save`) | 2 |
 | [0014](docs/adr/0014-sync-by-default-no-real-io.md) | Sync by default: no real I/O in Phase 2 | 2 |
+| [0015](docs/adr/0015-first-sync-to-async-boundary.md) | First sync-to-async boundary: `ExtractionService` (narrows ADR-0014) | 3 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
