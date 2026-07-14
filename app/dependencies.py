@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import Annotated
 
 from fastapi import Depends
@@ -10,13 +11,12 @@ from app.repositories.agreement_repository import (
 )
 from app.services.agreement_service import AgreementService
 
-# Module-level singleton: one shared in-memory store for the process lifetime.
+
+# One shared in-memory store for the process lifetime.
 # Tests swap this out per-function via app.dependency_overrides for isolation.
-_repository: AgreementRepository = InMemoryAgreementRepository()
-
-
+@lru_cache
 def get_agreement_repository() -> AgreementRepository:
-    return _repository
+    return InMemoryAgreementRepository()
 
 
 def get_agreement_service(
