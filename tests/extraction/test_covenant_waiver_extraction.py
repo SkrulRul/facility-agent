@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 from app.extraction_targets.covenant_waiver import CovenantWaiverNotice
 from app.services.extraction_service import ExtractionError
 from tests.extraction.conftest import make_service
+
+FIXTURE_PATH = Path(__file__).parent.parent / "fixtures" / "covenant_waiver_letter.txt"
+DOCUMENT_TEXT = FIXTURE_PATH.read_text()
 
 VALID_PAYLOAD = {
     "agreement_reference": "FA-2024-0091",
@@ -25,7 +29,7 @@ INVALID_PAYLOAD = {
 async def test_happy_path_returns_validated_instance() -> None:
     service, fake = make_service(VALID_PAYLOAD)
 
-    result = await service.extract("waiver letter text", CovenantWaiverNotice)
+    result = await service.extract(DOCUMENT_TEXT, CovenantWaiverNotice)
 
     assert result == CovenantWaiverNotice(
         agreement_reference="FA-2024-0091",
@@ -39,7 +43,7 @@ async def test_happy_path_returns_validated_instance() -> None:
 async def test_one_retry_recovers_from_validation_error() -> None:
     service, fake = make_service(INVALID_PAYLOAD, VALID_PAYLOAD)
 
-    result = await service.extract("waiver letter text", CovenantWaiverNotice)
+    result = await service.extract(DOCUMENT_TEXT, CovenantWaiverNotice)
 
     assert result.waiver_reason == "One-off restructuring charge unrelated to trading performance"
     assert len(fake.calls) == 2
@@ -51,6 +55,6 @@ async def test_max_attempts_exceeded_raises_extraction_error() -> None:
     service, fake = make_service(INVALID_PAYLOAD, INVALID_PAYLOAD, INVALID_PAYLOAD)
 
     with pytest.raises(ExtractionError):
-        await service.extract("waiver letter text", CovenantWaiverNotice, max_attempts=3)
+        await service.extract(DOCUMENT_TEXT, CovenantWaiverNotice, max_attempts=3)
 
     assert len(fake.calls) == 3
