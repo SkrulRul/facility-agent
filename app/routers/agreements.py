@@ -24,7 +24,7 @@ ServiceDep = Annotated[AgreementService, Depends(get_agreement_service)]
 
 
 def _to_response(agreement: FacilityAgreement) -> AgreementResponse:
-    return AgreementResponse.model_validate(agreement.model_dump())
+    return AgreementResponse.model_validate(agreement, from_attributes=True)
 
 
 @router.post("", status_code=201)
@@ -67,7 +67,7 @@ def record_covenant_test_result(
     service: ServiceDep,
 ) -> CovenantTestResultResponse:
     result = service.record_covenant_test_result(agreement_id, covenant_id, dto)
-    return CovenantTestResultResponse.model_validate(result.model_dump())
+    return CovenantTestResultResponse.model_validate(result, from_attributes=True)
 
 
 @router.post("/{agreement_id}/default-events", status_code=201)
@@ -77,4 +77,4 @@ def record_default_event(
     service: ServiceDep,
 ) -> DefaultEventResponse:
     event = service.record_default_event(agreement_id, dto)
-    return DefaultEventResponse.model_validate(event.model_dump())
+    return DefaultEventResponse.model_validate(event, from_attributes=True)

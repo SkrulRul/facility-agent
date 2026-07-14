@@ -34,3 +34,26 @@ The "async is contained to `ExtractionService` and does not propagate" property 
 ## Follow-ups
 
 - If a future extraction endpoint appears: (a) the route handler goes `async def` per the caveat above, and (b) it is the trigger to consider a string-keyed dispatch registry as a thin wrapper over `extract()` (deferred per the RALPLAN-DR consensus, not invalidated).
+
+## Known limitation — live-API schema acceptance not smoke-tested
+
+The sanitized JSON Schema produced by `_schema_for()` (recursive keyword
+stripping + `additionalProperties: false` at every depth) has been validated
+against the two committed extraction targets only through the offline,
+contract-enforcing fake (`ScriptedAnthropicClient`). It has **not** been
+smoke-tested against a live `claude-sonnet-5` call, due to no API billing
+being configured for this project at the time of Phase 3 close.
+
+This means two residual unknowns from the original plan remain genuinely
+open, not just theoretically open:
+- Whether the schema compiler requires every property to appear in
+  `required` when `additionalProperties: false` is set (irrelevant to the
+  two committed targets, which are 100% required fields — would only
+  surface with a future optional field).
+- Whether `format: "uuid"` is accepted by the schema compiler (neither
+  committed target uses it — both only use `format: "date"`).
+
+**Decision:** documented as a known, explicit limitation rather than
+resolved. Before either of the two scenarios above becomes relevant in a
+future Skill-generated target, run the manual smoke test in
+`scripts/smoke_test_extraction.py` against a live API key first.
