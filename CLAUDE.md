@@ -132,5 +132,34 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md) | In-memory repository persists by mutation-by-reference (no `update`/`save`) | 2 |
 | [0014](docs/adr/0014-sync-by-default-no-real-io.md) | Sync by default: no real I/O in Phase 2 | 2 |
 | [0015](docs/adr/0015-first-sync-to-async-boundary.md) | First sync-to-async boundary: `ExtractionService` (narrows ADR-0014) | 3 |
+| [0016](docs/adr/0016-project-scoped-hooks-quality-gate.md) | Project-scoped Claude Code hooks: quality tripwire + per-feature spec gate | 4 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
+
+---
+
+## Claude Code Hooks
+
+Two project-scoped hooks are wired via [`.claude/settings.json`](.claude/settings.json) and enforced on every `Write`/`Edit` — see [ADR-0016](docs/adr/0016-project-scoped-hooks-quality-gate.md) for the full rationale and alternatives considered.
+
+### Hook 1 — quality tripwire (`.claude/hooks/quality_gate.sh`)
+
+**Fires:** `PostToolUse`, on `Write`/`Edit` to `app/**` (excluding `**/__init__.py` and `app/extraction_targets/**`, the latter carved out so it doesn't interrupt the extraction-target-designer Skill mid-generation).
+
+**Checks:** runs the full `uv run poe check` (ruff + mypy + pyright + pytest). On failure, emits `{"decision":"block","reason":<check output>}`.
+
+**Important caveat — this is a tripwire, not a gate.** `PostToolUse` fires *after* the write has already landed on disk; it cannot prevent or undo the write. A failure blocks Claude from continuing to its next turn until the reported failure is fixed — it does not roll back the edit.
+
+**When blocked:** read the reported lint/type/test failure and fix it in the same file before continuing; there is nothing to "unblock" other than making `uv run poe check` pass again.
+
+### Hook 2 — per-feature spec gate (`.claude/hooks/require_spec.sh`)
+
+**Fires:** `PreToolUse`, on `Write`/`Edit` to `app/**` (excluding `**/__init__.py`, checked before segment derivation). Does not gate `tests/`, `docs/`, or `scripts/`.
+
+**Checks:** derives a *feature segment* from the target path — the first path component under `app/` for subdirectory files (e.g. `app/services/extraction_service.py` → `services`), or the filename stem for top-level `app/` files (e.g. `app/domain.py` → `domain`). The edit is allowed only if `docs/specs/<segment>.md` exists, or the segment is listed in the grandfather file [`docs/specs/pre-phase-4-baseline.md`](docs/specs/pre-phase-4-baseline.md) (which covers all Phase 1–3 legacy segments: `domain`, `main`, `config`, `dependencies`, `repositories`, `routers`, `services`, `extraction_targets`). Otherwise it denies via `hookSpecificOutput.permissionDecision: "deny"` with an actionable message.
+
+**`docs/specs/` vs `.omc/specs/`:** these are two separate, unrelated directories. `docs/specs/` is the committed, per-feature spec directory this hook reads (new in Phase 4). `.omc/specs/` holds this project's epic/phase planning docs (deep-interviews, phase reports) and is never read by either hook.
+
+**Going forward (Phase 5+):** any new top-level `app/` file or new subdirectory introduced after Phase 4 needs its own `docs/specs/<segment>.md` before this hook allows edits to it — the baseline grandfather file covers Phases 1–3 only and is not extended retroactively.
+
+**When blocked:** create `docs/specs/<segment>.md` describing the feature you're about to touch, then retry the edit.

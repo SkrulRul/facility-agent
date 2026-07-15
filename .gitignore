@@ -41,9 +41,7 @@ htmlcov/
 .zed/
 
 # AI agents & Claude Code
-.claude/*
-!.claude/agents/
-!.claude/skills/
+.claude/settings.local.json
 .omc/
 .aider*
 .copilot/
