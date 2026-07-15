@@ -69,6 +69,10 @@ class AgreementService:
             ]
         return agreements[offset : offset + limit]
 
+    def list_continuing_defaults(self, agreement_id: UUID) -> list[DefaultEvent]:
+        agreement = self.get_agreement(agreement_id)
+        return [event for event in agreement.default_events if event.is_continuing]
+
     def record_covenant_test_result(
         self,
         agreement_id: UUID,

@@ -29,6 +29,8 @@ Entry point: `app/main.py` exports the `app` FastAPI instance. FastAPI's auto-di
 
 Tests use `fastapi.testclient.TestClient` (backed by `httpx2`) — no running server needed.
 
+A second, independent entry point, `app/mcp_server.py`, exposes a subset of the service layer as MCP tools over stdio (`uv run python -m app.mcp_server`). It is a parallel interface layer alongside `app/routers/` — same altitude, different protocol — not mounted on the FastAPI app. See [ADR-0018](docs/adr/0018-mcp-server-fastmcp-stdio.md) and [`docs/specs/mcp_server.md`](docs/specs/mcp_server.md).
+
 Type checking is **strict** via both mypy and pyright. All production code in `app/` must be fully annotated; `tests/` relaxes `disallow_untyped_defs`.
 
 Active ruff rule sets: `FAST, ANN, E, F, I, UP, B, SIM` — annotations required on all public functions (`ANN`).
@@ -134,6 +136,7 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0015](docs/adr/0015-first-sync-to-async-boundary.md) | First sync-to-async boundary: `ExtractionService` (narrows ADR-0014) | 3 |
 | [0016](docs/adr/0016-project-scoped-hooks-quality-gate.md) | Project-scoped Claude Code hooks: quality tripwire + per-feature spec gate | 4 |
 | [0017](docs/adr/0017-stop-hook-enforcement-backstop.md) | `Stop` hook enforcement backstop for the quality tripwire (narrows ADR-0016) | 4 |
+| [0018](docs/adr/0018-mcp-server-fastmcp-stdio.md) | MCP server: `fastmcp`, stdio transport, 2-tool scope, standalone entry point | 5 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
 
