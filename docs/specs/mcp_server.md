@@ -37,6 +37,13 @@ Both tools are thin adapters: no filtering or business logic lives in `app/mcp_s
 
 **Implementation constraint:** `app/mcp_server.py` must `from app.dependencies import get_agreement_repository, get_agreement_service` and call the bare names inside each tool body. A qualified call (`app.dependencies.get_agreement_repository()`) would make the monkeypatch target miss, silently falling through to the real process singleton in tests.
 
+`scripts/smoke_test_mcp_server.py` is a separate, manual smoke test (not part of `uv run poe check`, same pattern as `scripts/smoke_test_extraction.py` — see ADR-0015) that proves the process boundary itself works — tool registration, the success path, and the not-found error path, all over the real wire protocol — closing the coverage gap the in-process test suite structurally can't reach (`tests/test_mcp_server.py` never spawns a subprocess).
+
+Since the production entry point has no write/seed capability by design (see Known Limitation below), the smoke test spawns `scripts/mcp_server_seeded.py` instead of `app/mcp_server.py` directly — a test-only entry point that imports the *same* `mcp` object unmodified, seeds one example agreement (fixed UUID, so no inter-process communication beyond MCP is needed) directly into the repository, then calls `mcp.run()`. This keeps `app/mcp_server.py` itself completely untouched — production usage (a real MCP client launching `uv run python -m app.mcp_server`) still has zero seed/write capability. Run manually:
+```bash
+uv run python scripts/smoke_test_mcp_server.py
+```
+
 ## Known limitation
 
 A live stdio subprocess (e.g. one launched by a Claude Code MCP client) gets its own independent, empty `InMemoryAgreementRepository` — separate from any concurrently running `uv run fastapi dev` process's store. There is no write-capable MCP tool, so a live stdio server has no way to be populated with data outside of a test harness that seeds the repository directly. Cross-process data sharing was never a design goal here — the epic's "Out of Scope" section already rules out a real persistence layer for this project — but it means the MCP server is currently useful for demonstrating the protocol and for its own test suite, not for querying data created via the HTTP API in a separate live process.
