@@ -38,3 +38,4 @@ This combination satisfies the phase's explicit acceptance criteria (≥2 tools,
 
 - If a future phase needs `list_covenants`/`check_covenant_status` as MCP tools, add them as new `@mcp.tool` functions in the same file (no reason to split files at 4 tools) plus corresponding service methods, with a `docs/specs/mcp_server.md` update if scope grows meaningfully.
 - If remote/SSE transport is ever needed, `fastmcp` supports it via `mcp.run(transport=...)` without a rewrite — revisit only if a concrete consumer appears.
+- **Phase 6 (ADR-0019)** makes this ADR's "Known limitation" section's "no persistence layer" premise false whenever `DATABASE_URL` is set — the MCP server and the HTTP API now share the same live Postgres database in that configuration. See `docs/specs/mcp_server.md`'s "Known limitation" section for the updated text.

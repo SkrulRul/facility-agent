@@ -9,30 +9,20 @@ from app.domain import FacilityAgreement
 class AgreementRepository(Protocol):
     """Port for agreement persistence (structural subtyping, not ABC).
 
-    No ``update``/``save`` method: ``FacilityAgreement`` list fields
-    (``covenant_test_results``, ``default_events``) are ordinary mutable
-    Python lists. The repository stores object references, so appending to a
-    fetched agreement's list *is* the persistence write (see ADR-0013).
+    All methods are async so one Protocol serves both the in-memory and
+    Postgres-backed implementations uniformly (ADR-0020). ``update`` is the
+    explicit durable-write path that replaces ADR-0013's mutation-by-reference
+    contract — see ADR-0021 for why that contract stopped being sufficient
+    once a backend can return copies instead of references.
+
+    Implementations: ``InMemoryAgreementRepository`` (in_memory_agreement_repository.py),
+    ``PostgresAgreementRepository`` (postgres_agreement_repository.py).
     """
 
-    def add(self, agreement: FacilityAgreement) -> None: ...
+    async def add(self, agreement: FacilityAgreement) -> None: ...
 
-    def get(self, agreement_id: UUID) -> FacilityAgreement | None: ...
+    async def get(self, agreement_id: UUID) -> FacilityAgreement | None: ...
 
-    def list_all(self) -> list[FacilityAgreement]: ...
+    async def list_all(self) -> list[FacilityAgreement]: ...
 
-
-class InMemoryAgreementRepository:
-    """Dict-backed in-memory implementation of ``AgreementRepository``."""
-
-    def __init__(self) -> None:
-        self._store: dict[UUID, FacilityAgreement] = {}
-
-    def add(self, agreement: FacilityAgreement) -> None:
-        self._store[agreement.id] = agreement
-
-    def get(self, agreement_id: UUID) -> FacilityAgreement | None:
-        return self._store.get(agreement_id)
-
-    def list_all(self) -> list[FacilityAgreement]:
-        return list(self._store.values())
+    async def update(self, agreement: FacilityAgreement) -> None: ...

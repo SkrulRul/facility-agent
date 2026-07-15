@@ -13,21 +13,21 @@ mcp = FastMCP("facility-agent", mask_error_details=True)
 
 
 @mcp.tool
-def get_agreement(agreement_id: UUID) -> FacilityAgreement:
+async def get_agreement(agreement_id: UUID) -> FacilityAgreement:
     """Fetch a facility agreement by ID."""
     service = get_agreement_service(get_agreement_repository())
     try:
-        return service.get_agreement(agreement_id)
+        return await service.get_agreement(agreement_id)
     except AgreementNotFoundError as exc:
         raise ToolError(str(exc)) from exc
 
 
 @mcp.tool
-def list_continuing_defaults(agreement_id: UUID) -> list[DefaultEvent]:
+async def list_continuing_defaults(agreement_id: UUID) -> list[DefaultEvent]:
     """List default events on an agreement where is_continuing is True."""
     service = get_agreement_service(get_agreement_repository())
     try:
-        return service.list_continuing_defaults(agreement_id)
+        return await service.list_continuing_defaults(agreement_id)
     except AgreementNotFoundError as exc:
         raise ToolError(str(exc)) from exc
 

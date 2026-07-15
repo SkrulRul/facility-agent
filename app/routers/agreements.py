@@ -28,13 +28,13 @@ def _to_response(agreement: FacilityAgreement) -> AgreementResponse:
 
 
 @router.post("", status_code=201)
-def create_agreement(dto: CreateAgreementRequest, service: ServiceDep) -> AgreementResponse:
-    agreement = service.create_agreement(dto)
+async def create_agreement(dto: CreateAgreementRequest, service: ServiceDep) -> AgreementResponse:
+    agreement = await service.create_agreement(dto)
     return _to_response(agreement)
 
 
 @router.get("")
-def list_agreements(
+async def list_agreements(
     service: ServiceDep,
     status: AgreementStatus | None = None,
     borrower_id: UUID | None = None,
@@ -42,7 +42,7 @@ def list_agreements(
     limit: Annotated[int, Query(ge=1, le=200)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> PaginatedResponse[AgreementResponse]:
-    agreements = service.list_agreements(
+    agreements = await service.list_agreements(
         status=status,
         borrower_id=borrower_id,
         in_covenant_breach=in_covenant_breach,
@@ -54,27 +54,27 @@ def list_agreements(
 
 
 @router.get("/{agreement_id}")
-def get_agreement(agreement_id: UUID, service: ServiceDep) -> AgreementResponse:
-    agreement = service.get_agreement(agreement_id)
+async def get_agreement(agreement_id: UUID, service: ServiceDep) -> AgreementResponse:
+    agreement = await service.get_agreement(agreement_id)
     return _to_response(agreement)
 
 
 @router.post("/{agreement_id}/covenants/{covenant_id}/test-results", status_code=201)
-def record_covenant_test_result(
+async def record_covenant_test_result(
     agreement_id: UUID,
     covenant_id: UUID,
     dto: CovenantTestResultRequest,
     service: ServiceDep,
 ) -> CovenantTestResultResponse:
-    result = service.record_covenant_test_result(agreement_id, covenant_id, dto)
+    result = await service.record_covenant_test_result(agreement_id, covenant_id, dto)
     return CovenantTestResultResponse.model_validate(result, from_attributes=True)
 
 
 @router.post("/{agreement_id}/default-events", status_code=201)
-def record_default_event(
+async def record_default_event(
     agreement_id: UUID,
     dto: DefaultEventRequest,
     service: ServiceDep,
 ) -> DefaultEventResponse:
-    event = service.record_default_event(agreement_id, dto)
+    event = await service.record_default_event(agreement_id, dto)
     return DefaultEventResponse.model_validate(event, from_attributes=True)

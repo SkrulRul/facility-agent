@@ -10,11 +10,16 @@ limitation" — no write-capable MCP tool, no persistence bridge).
 This script reuses the real `mcp` object from app.mcp_server unmodified —
 same tools, same code — and seeds one agreement directly into the repository
 before mcp.run() starts, since there's no MCP tool (and never should be one)
-that could do this over the wire. Not run by `uv run poe check`.
+that could do this over the wire. Not run by `uv run poe check`. Always seeds
+into whatever backend get_agreement_repository() resolves to (in-memory by
+design here — see docs/specs/mcp_server.md — since this script's only job is
+exercising the stdio wire protocol, not proving Postgres durability, which
+scripts/smoke_test_persistence.py covers instead).
 """
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID
@@ -33,7 +38,7 @@ from app.mcp_server import mcp
 SEEDED_AGREEMENT_ID = UUID("1a08e2ef-0ff9-4bae-ac8d-840c5820a94f")
 
 
-def seed() -> None:
+async def seed() -> None:
     continuing_default = DefaultEvent(
         id=UUID("00000000-0000-0000-0000-000000000001"),
         event_type="payment_default",
@@ -70,9 +75,9 @@ def seed() -> None:
         default_events=[continuing_default, remedied_default],
         created_at=datetime.now(UTC),
     )
-    get_agreement_repository().add(agreement)
+    await get_agreement_repository().add(agreement)
 
 
 if __name__ == "__main__":
-    seed()
+    asyncio.run(seed())
     mcp.run()

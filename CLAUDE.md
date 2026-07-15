@@ -76,9 +76,10 @@ Dependencies flow **inward only**: routers → services → domain. Domain model
 - Raises `AgreementNotFoundError` / `CovenantNotFoundError` (subclassing `DomainNotFoundError`) for missing entities; a FastAPI exception handler in `app/main.py` maps `DomainNotFoundError` to HTTP 404.
 
 **Repository layer:**
-- In-memory storage only for this project (explicitly out of scope: SQLAlchemy, database, persistence). See [`docs/PRD.md` §7](docs/PRD.md#7-explicitly-out-of-scope-for-v1).
-- `AgreementRepository` is a `Protocol` (structural typing) with exactly three methods: `add`, `get`, `list_all`. No `update`/`save` — see [ADR-0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md).
-- Repositories return domain model instances, not dicts or ORM objects.
+- Two backends: `InMemoryAgreementRepository` (dev/test-only, always available, zero external dependency) and `PostgresAgreementRepository` (production, SQLAlchemy 2.0 async + asyncpg, selected via `DATABASE_URL` presence — see [ADR-0019](docs/adr/0019-database-backend-selection.md)). The in-memory backend is never made production-capable; this is a deliberate scope boundary, not a placeholder awaiting removal.
+- `AgreementRepository` is a `Protocol` (structural typing, `app/repositories/agreement_repository.py`) with four async methods: `add`, `get`, `list_all`, `update`. `update` is the durable-write path — see [ADR-0021](docs/adr/0021-agreement-repository-update.md), which replaced the earlier mutation-by-reference contract ([ADR-0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md), now superseded).
+- One file per implementation: `in_memory_agreement_repository.py`, `postgres_agreement_repository.py`. SQLAlchemy table definitions live in `orm_models.py` (named to disambiguate from `app/domain.py`'s Pydantic domain models — "model" already means something else in this codebase).
+- Repositories return domain model instances, not dicts or ORM objects — `PostgresAgreementRepository` reconstructs `FacilityAgreement` from ORM rows via `model_validate(..., strict=False)`, never leaking `Orm*` types past the repository boundary.
 - DI wiring lives in `app/dependencies.py`: routes depend on `Depends(get_agreement_service)` (or similar), backed by a singleton repository instance — never instantiated directly in a route handler.
 
 ### Error type policy
@@ -137,6 +138,9 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0016](docs/adr/0016-project-scoped-hooks-quality-gate.md) | Project-scoped Claude Code hooks: quality tripwire + per-feature spec gate | 4 |
 | [0017](docs/adr/0017-stop-hook-enforcement-backstop.md) | `Stop` hook enforcement backstop for the quality tripwire (narrows ADR-0016) | 4 |
 | [0018](docs/adr/0018-mcp-server-fastmcp-stdio.md) | MCP server: `fastmcp`, stdio transport, 2-tool scope, standalone entry point | 5 |
+| [0019](docs/adr/0019-database-backend-selection.md) | Database backend selection: `DATABASE_URL` presence chooses in-memory vs. Postgres | 6 |
+| [0020](docs/adr/0020-async-boundary-extension.md) | Async boundary extension: repository through service, routers, and MCP tools (narrows ADR-0014/0015) | 6 |
+| [0021](docs/adr/0021-agreement-repository-update.md) | `AgreementRepository.update()`: the ADR-0013 replacement (supersedes ADR-0013's mutation-by-reference contract) | 6 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
 

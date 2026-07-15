@@ -11,7 +11,7 @@ from fastmcp.exceptions import ToolError
 
 from app.domain import BulletRepaymentSchedule, DefaultEvent, FacilityAgreement, FixedInterestTerms
 from app.mcp_server import mcp
-from app.repositories.agreement_repository import InMemoryAgreementRepository
+from app.repositories.in_memory_agreement_repository import InMemoryAgreementRepository
 
 
 @pytest.fixture
@@ -79,7 +79,7 @@ async def test_get_agreement_returns_seeded_agreement(
     mcp_repository: InMemoryAgreementRepository, mcp_client: Client[FastMCPTransport]
 ) -> None:
     agreement = build_agreement()
-    mcp_repository.add(agreement)
+    await mcp_repository.add(agreement)
 
     async with mcp_client:
         result = await mcp_client.call_tool("get_agreement", {"agreement_id": str(agreement.id)})
@@ -115,7 +115,7 @@ async def test_list_continuing_defaults_filters_out_remedied_and_waived(
     remedied = build_default_event(remediation_status="remedied")
     waived = build_default_event(waiver_status="waived")
     agreement = build_agreement(default_events=[continuing, remedied, waived])
-    mcp_repository.add(agreement)
+    await mcp_repository.add(agreement)
 
     async with mcp_client:
         result = await mcp_client.call_tool(
@@ -144,7 +144,7 @@ async def test_list_continuing_defaults_returns_empty_list_when_none_continuing(
 ) -> None:
     remedied = build_default_event(remediation_status="remedied")
     agreement = build_agreement(default_events=[remedied])
-    mcp_repository.add(agreement)
+    await mcp_repository.add(agreement)
 
     async with mcp_client:
         result = await mcp_client.call_tool(
@@ -160,7 +160,7 @@ async def test_list_continuing_defaults_returns_empty_list_when_no_default_event
     mcp_repository: InMemoryAgreementRepository, mcp_client: Client[FastMCPTransport]
 ) -> None:
     agreement = build_agreement(default_events=[])
-    mcp_repository.add(agreement)
+    await mcp_repository.add(agreement)
 
     async with mcp_client:
         result = await mcp_client.call_tool(

@@ -1,12 +1,25 @@
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
 
+from app.dependencies import get_engine
 from app.routers.agreements import router as agreements_router
 from app.services.agreement_service import DomainNotFoundError
 
-app = FastAPI(title="facility-agent")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    yield
+    engine = get_engine()
+    if engine is not None:
+        await engine.dispose()
+
+
+app = FastAPI(title="facility-agent", lifespan=lifespan)
 
 
 async def _domain_not_found_handler(_request: Request, exc: Exception) -> JSONResponse:

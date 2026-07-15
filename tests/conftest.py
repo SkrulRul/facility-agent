@@ -9,18 +9,24 @@ from fastapi.testclient import TestClient
 
 from app.dependencies import get_agreement_repository
 from app.main import app
-from app.repositories.agreement_repository import InMemoryAgreementRepository
+from app.repositories.in_memory_agreement_repository import InMemoryAgreementRepository
 
 
 @pytest.fixture
-def client() -> Iterator[TestClient]:
+def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     """A TestClient backed by a FRESH in-memory repository per test function.
 
     Overrides the singleton repository provider so tests are isolated from each
-    other and from the process-level store.
+    other and from the process-level store. Also monkeypatches app.main's
+    bare-name get_engine (called directly by the lifespan handler, outside
+    FastAPI's Depends() graph, so app.dependency_overrides can't reach it —
+    same seam as app/mcp_server.py's bare-name pattern, see
+    docs/specs/mcp_server.md) so tests never depend on an ambient DATABASE_URL
+    that no test here actually intends to exercise.
     """
     repository = InMemoryAgreementRepository()
     app.dependency_overrides[get_agreement_repository] = lambda: repository
+    monkeypatch.setattr("app.main.get_engine", lambda: None)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()

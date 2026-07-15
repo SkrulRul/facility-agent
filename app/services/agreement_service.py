@@ -27,30 +27,32 @@ class CovenantNotFoundError(DomainNotFoundError):
 class AgreementService:
     """Orchestrates the agreement aggregate.
 
-    Synchronous by design (see ADR-0014): no endpoint in Phase 2 touches real
-    I/O — the repository is an in-memory dict — so ``async def`` would be a
-    fake justification.
+    Async by design (see ADR-0020): the repository now does real I/O against
+    Postgres in production, and the async boundary propagates fully through
+    this service and the route handlers rather than being bridged by a sync
+    facade — matching ADR-0015's precedent that no sync bridge keeps an async
+    I/O boundary contained.
     """
 
     def __init__(self, repository: AgreementRepository) -> None:
         self._repository = repository
 
-    def create_agreement(self, dto: CreateAgreementRequest) -> FacilityAgreement:
+    async def create_agreement(self, dto: CreateAgreementRequest) -> FacilityAgreement:
         agreement = FacilityAgreement(
             id=uuid4(),
             created_at=datetime.now(UTC),
             **dto.model_dump(),
         )
-        self._repository.add(agreement)
+        await self._repository.add(agreement)
         return agreement
 
-    def get_agreement(self, agreement_id: UUID) -> FacilityAgreement:
-        agreement = self._repository.get(agreement_id)
+    async def get_agreement(self, agreement_id: UUID) -> FacilityAgreement:
+        agreement = await self._repository.get(agreement_id)
         if agreement is None:
             raise AgreementNotFoundError(f"Agreement {agreement_id} not found")
         return agreement
 
-    def list_agreements(
+    async def list_agreements(
         self,
         status: AgreementStatus | None = None,
         borrower_id: UUID | None = None,
@@ -58,7 +60,7 @@ class AgreementService:
         limit: int = 50,
         offset: int = 0,
     ) -> list[FacilityAgreement]:
-        agreements = self._repository.list_all()
+        agreements = await self._repository.list_all()
         if status is not None:
             agreements = [item for item in agreements if item.status == status]
         if borrower_id is not None:
@@ -69,17 +71,17 @@ class AgreementService:
             ]
         return agreements[offset : offset + limit]
 
-    def list_continuing_defaults(self, agreement_id: UUID) -> list[DefaultEvent]:
-        agreement = self.get_agreement(agreement_id)
+    async def list_continuing_defaults(self, agreement_id: UUID) -> list[DefaultEvent]:
+        agreement = await self.get_agreement(agreement_id)
         return [event for event in agreement.default_events if event.is_continuing]
 
-    def record_covenant_test_result(
+    async def record_covenant_test_result(
         self,
         agreement_id: UUID,
         covenant_id: UUID,
         dto: CovenantTestResultRequest,
     ) -> CovenantTestResult:
-        agreement = self.get_agreement(agreement_id)
+        agreement = await self.get_agreement(agreement_id)
         if not any(covenant.id == covenant_id for covenant in agreement.covenants):
             raise CovenantNotFoundError(
                 f"Covenant {covenant_id} not found on agreement {agreement_id}"
@@ -92,14 +94,15 @@ class AgreementService:
             tested_by=dto.tested_by,
         )
         agreement.covenant_test_results.append(result)
+        await self._repository.update(agreement)
         return result
 
-    def record_default_event(
+    async def record_default_event(
         self,
         agreement_id: UUID,
         dto: DefaultEventRequest,
     ) -> DefaultEvent:
-        agreement = self.get_agreement(agreement_id)
+        agreement = await self.get_agreement(agreement_id)
         event = DefaultEvent(
             id=uuid4(),
             event_type=dto.event_type,
@@ -111,4 +114,5 @@ class AgreementService:
             waiver_status=dto.waiver_status,
         )
         agreement.default_events.append(event)
+        await self._repository.update(agreement)
         return event
