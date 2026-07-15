@@ -133,6 +133,7 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0014](docs/adr/0014-sync-by-default-no-real-io.md) | Sync by default: no real I/O in Phase 2 | 2 |
 | [0015](docs/adr/0015-first-sync-to-async-boundary.md) | First sync-to-async boundary: `ExtractionService` (narrows ADR-0014) | 3 |
 | [0016](docs/adr/0016-project-scoped-hooks-quality-gate.md) | Project-scoped Claude Code hooks: quality tripwire + per-feature spec gate | 4 |
+| [0017](docs/adr/0017-stop-hook-enforcement-backstop.md) | `Stop` hook enforcement backstop for the quality tripwire (narrows ADR-0016) | 4 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
 
@@ -151,6 +152,8 @@ Two project-scoped hooks are wired via [`.claude/settings.json`](.claude/setting
 **Important caveat — this is a tripwire, not a gate.** `PostToolUse` fires *after* the write has already landed on disk; it cannot prevent or undo the write. A failure blocks Claude from continuing to its next turn until the reported failure is fixed — it does not roll back the edit.
 
 **When blocked:** read the reported lint/type/test failure and fix it in the same file before continuing; there is nothing to "unblock" other than making `uv run poe check` pass again.
+
+**Enforcement backstop (`.claude/hooks/enforce_check.sh`, `Stop` event — see [ADR-0017](docs/adr/0017-stop-hook-enforcement-backstop.md)):** `PostToolUse`'s block is advisory — nothing in the harness compels Claude to act on it before ending its turn. To close that gap, `quality_gate.sh` persists its last result to a gitignored, session-tagged state file (`.claude/hooks/.runtime/last_check.json`). A companion `Stop` hook reads it: if the last check in *this session* failed, it emits its own `decision:"block"`, which the harness genuinely enforces — Claude cannot end the turn with a known-broken `app/` state. A different or older session's failure marker is ignored (session-scoped, so an interrupted session can never wrongly block an unrelated later one).
 
 ### Hook 2 — per-feature spec gate (`.claude/hooks/require_spec.sh`)
 
