@@ -133,14 +133,17 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0011](docs/adr/0011-matured-status-uses-date-today.md) | `matured` status uses `date.today()` | 1 |
 | [0012](docs/adr/0012-literal-enums-for-bounded-domain-strings.md) | `Literal` enums for all bounded domain strings | 1 |
 | [0013](docs/adr/0013-in-memory-repository-mutation-by-reference.md) | In-memory repository persists by mutation-by-reference (no `update`/`save`) | 2 |
-| [0014](docs/adr/0014-sync-by-default-no-real-io.md) | Sync by default: no real I/O in Phase 2 | 2 |
+| [0014](docs/adr/0014-sync-by-default-no-real-io.md) | Sync by default: no real I/O in Phase 2 — superseded by ADR-0020 | 2 |
 | [0015](docs/adr/0015-first-sync-to-async-boundary.md) | First sync-to-async boundary: `ExtractionService` (narrows ADR-0014) | 3 |
 | [0016](docs/adr/0016-project-scoped-hooks-quality-gate.md) | Project-scoped Claude Code hooks: quality tripwire + per-feature spec gate | 4 |
 | [0017](docs/adr/0017-stop-hook-enforcement-backstop.md) | `Stop` hook enforcement backstop for the quality tripwire (narrows ADR-0016) | 4 |
 | [0018](docs/adr/0018-mcp-server-fastmcp-stdio.md) | MCP server: `fastmcp`, stdio transport, 2-tool scope, standalone entry point | 5 |
 | [0019](docs/adr/0019-database-backend-selection.md) | Database backend selection: `DATABASE_URL` presence chooses in-memory vs. Postgres | 6 |
-| [0020](docs/adr/0020-async-boundary-extension.md) | Async boundary extension: repository through service, routers, and MCP tools (narrows ADR-0014/0015) | 6 |
+| [0020](docs/adr/0020-async-boundary-extension.md) | Async boundary extension: repository through service, routers, and MCP tools (supersedes ADR-0014, narrows ADR-0015) | 6 |
 | [0021](docs/adr/0021-agreement-repository-update.md) | `AgreementRepository.update()`: the ADR-0013 replacement (supersedes ADR-0013's mutation-by-reference contract) | 6 |
+| [0022](docs/adr/0022-bootstrap-tooling-choices.md) | Bootstrap tooling choices: `uv`, flat `app/` layout, no build-system, mypy/pyright/ruff scoping | 0 |
+| [0023](docs/adr/0023-single-container-docker-packaging.md) | Single-container Docker packaging: API-only image, external Postgres via `DATABASE_URL` | 7 |
+| [0024](docs/adr/0024-ci-scope-lint-typecheck-in-memory-tests.md) | CI scope: lint + typecheck + in-memory test suite only, no Postgres service | 7 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
 

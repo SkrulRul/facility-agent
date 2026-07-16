@@ -52,7 +52,9 @@ class OrmCovenantTestResult(Base):
     __tablename__ = "covenant_test_results"
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
-    agreement_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("agreements.id", ondelete="CASCADE"))
+    agreement_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("agreements.id", ondelete="CASCADE")
+    )
     # No DB-level FK to a covenant: covenants live in the parent row's
     # `covenants` JSONB column, not their own table — see ADR-0021.
     covenant_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True))
@@ -67,7 +69,9 @@ class OrmDefaultEvent(Base):
     __tablename__ = "default_events"
 
     id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), primary_key=True)
-    agreement_id: Mapped[UUID] = mapped_column(PgUUID(as_uuid=True), ForeignKey("agreements.id", ondelete="CASCADE"))
+    agreement_id: Mapped[UUID] = mapped_column(
+        PgUUID(as_uuid=True), ForeignKey("agreements.id", ondelete="CASCADE")
+    )
     event_type: Mapped[str] = mapped_column(String)
     occurred_date: Mapped[date] = mapped_column(Date)
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

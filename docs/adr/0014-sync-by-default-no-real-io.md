@@ -1,6 +1,6 @@
 # ADR-0014 — Sync by default: no real I/O in Phase 2
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0020](0020-async-boundary-extension.md) (Phase 6) — async fully propagated through `app/` in Phase 6 (repository, service, routers, MCP tools all `async def`), so no sync code path remains anywhere in `app/`. This differs from [ADR-0015](0015-first-sync-to-async-boundary.md), which only narrowed this ADR's scope (one additional async surface, `ExtractionService`) without overturning it — ADR-0020 is what fully supersedes it.
 
 ## Decision
 

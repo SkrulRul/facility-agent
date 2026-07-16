@@ -10,7 +10,7 @@ Async propagates fully from `PostgresAgreementRepository` through `AgreementServ
 
 - SQLAlchemy's async engine (chosen for the Postgres repository) forces the boundary to start at the repository — there is no sync SQLAlchemy async session.
 - ADR-0015's precedent: no sync bridge keeps a genuine I/O boundary contained. `ExtractionService`'s "async is contained" property held only because no caller awaited it; the moment a caller does, the boundary propagates. `AgreementService`'s methods are called from route handlers by construction, so the same propagation is immediate and total here, not conditional.
-- Narrows ADR-0014, which explicitly anticipated this: "if a later phase introduces real I/O ... that new code path should be evaluated for async on its own merits — this ADR does not preclude async elsewhere."
+- Supersedes ADR-0014, which explicitly anticipated this: "if a later phase introduces real I/O ... that new code path should be evaluated for async on its own merits — this ADR does not preclude async elsewhere."
 
 ## Alternatives considered
 
