@@ -12,6 +12,12 @@ class ExtractionSettings(BaseSettings):
     transport_max_retries: int = 2
 
 
+class LogSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    log_level: str = "INFO"
+
+
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

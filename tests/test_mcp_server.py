@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
@@ -10,6 +11,7 @@ from fastmcp.client.transports import FastMCPTransport
 from fastmcp.exceptions import ToolError
 
 from app.domain import BulletRepaymentSchedule, DefaultEvent, FacilityAgreement, FixedInterestTerms
+from app.logging import _JsonFormatter  # pyright: ignore[reportPrivateUsage]
 from app.mcp_server import mcp
 from app.repositories.in_memory_agreement_repository import InMemoryAgreementRepository
 
@@ -154,6 +156,30 @@ async def test_list_continuing_defaults_returns_empty_list_when_none_continuing(
     content = result.structured_content
     assert content is not None
     assert content["result"] == []
+
+
+async def test_get_agreement_logs_are_correlated_and_identifier_only(
+    mcp_repository: InMemoryAgreementRepository,
+    mcp_client: Client[FastMCPTransport],
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.INFO)
+    agreement = build_agreement()
+    await mcp_repository.add(agreement)
+
+    async with mcp_client:
+        await mcp_client.call_tool("get_agreement", {"agreement_id": str(agreement.id)})
+
+    tool_records = [record for record in caplog.records if record.name == "app.mcp_server"]
+    assert len(tool_records) == 2  # started + succeeded
+    correlation_ids = {getattr(record, "correlation_id", None) for record in tool_records}
+    assert len(correlation_ids) == 1
+    assert None not in correlation_ids
+
+    formatted = "\n".join(_JsonFormatter().format(record) for record in tool_records)
+    assert str(agreement.id) in formatted
+    assert str(agreement.facility_amount) not in formatted
+    assert str(agreement.borrower_id) not in formatted
 
 
 async def test_list_continuing_defaults_returns_empty_list_when_no_default_events_at_all(

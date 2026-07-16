@@ -144,6 +144,7 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0022](docs/adr/0022-bootstrap-tooling-choices.md) | Bootstrap tooling choices: `uv`, flat `app/` layout, no build-system, mypy/pyright/ruff scoping | 0 |
 | [0023](docs/adr/0023-single-container-docker-packaging.md) | Single-container Docker packaging: API-only image, external Postgres via `DATABASE_URL` | 7 |
 | [0024](docs/adr/0024-ci-scope-lint-typecheck-in-memory-tests.md) | CI scope: lint + typecheck + in-memory test suite only, no Postgres service | 7 |
+| [0025](docs/adr/0025-structured-logging-correlation-ids.md) | Structured logging: stdlib `logging` + JSON formatter, contextvar-based correlation ids | 8 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
 
