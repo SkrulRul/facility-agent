@@ -18,6 +18,13 @@ class LogSettings(BaseSettings):
     log_level: str = "INFO"
 
 
+class AuthSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    loan_operations_analyst_api_keys: SecretStr = SecretStr("")
+    credit_risk_officer_api_keys: SecretStr = SecretStr("")
+
+
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

@@ -82,6 +82,17 @@ uv run poe check     # lint + typecheck + test — identical to CI
 
 CI has **no Postgres service** and does not run the Postgres-backed test suite or any of the manual smoke-test scripts (`scripts/smoke_test_*.py`) — those stay manual by design, consistent with how every other real-I/O boundary in this codebase (LLM extraction, MCP server, persistence) is verified. See [ADR-0024](docs/adr/0024-ci-scope-lint-typecheck-in-memory-tests.md).
 
+## Authentication
+
+Every `/agreements` route requires an `X-API-Key` header. Each key is mapped to exactly one role via env vars — comma-separated for multiple keys per role:
+
+```bash
+export LOAN_OPERATIONS_ANALYST_API_KEYS="analyst-key-1,analyst-key-2"
+export CREDIT_RISK_OFFICER_API_KEYS="risk-officer-key-1"
+```
+
+A missing or unrecognized key returns `401`. A recognized key for the wrong role (Credit Risk Officer calling a write endpoint) returns `403`. `GET /health` is unauthenticated by design (infra liveness probe). See [ADR-0026](docs/adr/0026-role-based-api-key-authentication.md) and [`docs/specs/auth.md`](docs/specs/auth.md).
+
 ## MCP Server
 
 The service layer is also exposed as an MCP server (`app/mcp_server.py`) — a separate, independent entry point over stdio, not mounted on the FastAPI app. It exposes two read-only query tools: `get_agreement(agreement_id: UUID) -> FacilityAgreement` and `list_continuing_defaults(agreement_id: UUID) -> list[DefaultEvent]`. See [ADR-0018](docs/adr/0018-mcp-server-fastmcp-stdio.md) and [`docs/specs/mcp_server.md`](docs/specs/mcp_server.md) for the full design and a known limitation around per-process in-memory state.

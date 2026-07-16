@@ -5,6 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
+from app.auth import Identity, get_current_identity, require_role
 from app.dependencies import get_agreement_service
 from app.domain import AgreementStatus, FacilityAgreement
 from app.routers.schemas import (
@@ -18,9 +19,14 @@ from app.routers.schemas import (
 )
 from app.services.agreement_service import AgreementService
 
-router = APIRouter(prefix="/agreements", tags=["agreements"])
+router = APIRouter(
+    prefix="/agreements",
+    tags=["agreements"],
+    dependencies=[Depends(get_current_identity)],
+)
 
 ServiceDep = Annotated[AgreementService, Depends(get_agreement_service)]
+WriterDep = Annotated[Identity, Depends(require_role("loan_operations_analyst"))]
 
 
 def _to_response(agreement: FacilityAgreement) -> AgreementResponse:
@@ -28,7 +34,9 @@ def _to_response(agreement: FacilityAgreement) -> AgreementResponse:
 
 
 @router.post("", status_code=201)
-async def create_agreement(dto: CreateAgreementRequest, service: ServiceDep) -> AgreementResponse:
+async def create_agreement(
+    dto: CreateAgreementRequest, service: ServiceDep, writer_identity: WriterDep
+) -> AgreementResponse:
     agreement = await service.create_agreement(dto)
     return _to_response(agreement)
 
@@ -65,6 +73,7 @@ async def record_covenant_test_result(
     covenant_id: UUID,
     dto: CovenantTestResultRequest,
     service: ServiceDep,
+    writer_identity: WriterDep,
 ) -> CovenantTestResultResponse:
     result = await service.record_covenant_test_result(agreement_id, covenant_id, dto)
     return CovenantTestResultResponse.model_validate(result, from_attributes=True)
@@ -75,6 +84,7 @@ async def record_default_event(
     agreement_id: UUID,
     dto: DefaultEventRequest,
     service: ServiceDep,
+    writer_identity: WriterDep,
 ) -> DefaultEventResponse:
     event = await service.record_default_event(agreement_id, dto)
     return DefaultEventResponse.model_validate(event, from_attributes=True)

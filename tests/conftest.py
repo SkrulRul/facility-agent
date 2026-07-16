@@ -11,6 +11,14 @@ from app.dependencies import get_agreement_repository
 from app.main import app
 from app.repositories.in_memory_agreement_repository import InMemoryAgreementRepository
 
+TEST_ANALYST_API_KEY = "test-analyst-key"
+TEST_RISK_OFFICER_API_KEY = "test-risk-officer-key"
+
+_TEST_ROLE_KEYS = {
+    TEST_ANALYST_API_KEY: "loan_operations_analyst",
+    TEST_RISK_OFFICER_API_KEY: "credit_risk_officer",
+}
+
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
@@ -23,11 +31,18 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     same seam as app/mcp_server.py's bare-name pattern, see
     docs/specs/mcp_server.md) so tests never depend on an ambient DATABASE_URL
     that no test here actually intends to exercise.
+
+    Defaults to authenticating as the Loan Operations Analyst (full read+write
+    access, matching this fixture's pre-Phase-9 scope) via a default X-API-Key
+    header, so the ~40 existing call sites across the test suite need no
+    changes — see docs/specs/auth.md. Tests targeting role-specific behavior
+    (tests/test_auth.py) override the header per-request instead.
     """
     repository = InMemoryAgreementRepository()
     app.dependency_overrides[get_agreement_repository] = lambda: repository
     monkeypatch.setattr("app.main.get_engine", lambda: None)
-    with TestClient(app) as test_client:
+    monkeypatch.setattr("app.auth._load_role_keys", lambda: _TEST_ROLE_KEYS)
+    with TestClient(app, headers={"X-API-Key": TEST_ANALYST_API_KEY}) as test_client:
         yield test_client
     app.dependency_overrides.clear()
 
