@@ -22,7 +22,7 @@ A single `X-API-Key` request header. `AuthSettings` (`app/config.py`) holds two 
 
 ## Wiring
 
-`app/routers/agreements.py`'s `APIRouter` carries `dependencies=[Depends(get_current_identity)]` at construction — every route gets 401 enforcement with no per-route boilerplate. The three write handlers (`create_agreement`, `record_covenant_test_result`, `record_default_event`) additionally declare a `Depends(require_role("loan_operations_analyst"))` parameter for 403 enforcement. Read handlers (`list_agreements`, `get_agreement`) take no further dependency — any authenticated identity may call them.
+`app/routers/agreements.py`'s `APIRouter` carries `dependencies=[Depends(get_current_identity)]` at construction — every route gets 401 enforcement with no per-route boilerplate. The three write handlers (`create_agreement`, `record_covenant_test_result`, `record_default_event`) additionally pass `dependencies=[RequireWriter]` (`RequireWriter = Depends(require_role("loan_operations_analyst"))`) on their `@router.post(...)` decorator for 403 enforcement — a route-level dependency, not a function parameter, since the handlers never need the resolved `Identity` value itself. Read handlers (`list_agreements`, `get_agreement`) take no further dependency — any authenticated identity may call them.
 
 `GET /health` (`app/main.py`) is deliberately **not** gated — it's an infra liveness probe with no business data, and gating it would break unauthenticated load-balancer/container health checks for no security benefit.
 

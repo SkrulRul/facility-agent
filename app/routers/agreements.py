@@ -5,7 +5,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 
-from app.auth import Identity, get_current_identity, require_role
+from app.auth import get_current_identity, require_role
 from app.dependencies import get_agreement_service
 from app.domain import AgreementStatus, FacilityAgreement
 from app.routers.schemas import (
@@ -26,17 +26,15 @@ router = APIRouter(
 )
 
 ServiceDep = Annotated[AgreementService, Depends(get_agreement_service)]
-WriterDep = Annotated[Identity, Depends(require_role("loan_operations_analyst"))]
+RequireWriter = Depends(require_role("loan_operations_analyst"))
 
 
 def _to_response(agreement: FacilityAgreement) -> AgreementResponse:
     return AgreementResponse.model_validate(agreement, from_attributes=True)
 
 
-@router.post("", status_code=201)
-async def create_agreement(
-    dto: CreateAgreementRequest, service: ServiceDep, writer_identity: WriterDep
-) -> AgreementResponse:
+@router.post("", status_code=201, dependencies=[RequireWriter])
+async def create_agreement(dto: CreateAgreementRequest, service: ServiceDep) -> AgreementResponse:
     agreement = await service.create_agreement(dto)
     return _to_response(agreement)
 
@@ -67,24 +65,26 @@ async def get_agreement(agreement_id: UUID, service: ServiceDep) -> AgreementRes
     return _to_response(agreement)
 
 
-@router.post("/{agreement_id}/covenants/{covenant_id}/test-results", status_code=201)
+@router.post(
+    "/{agreement_id}/covenants/{covenant_id}/test-results",
+    status_code=201,
+    dependencies=[RequireWriter],
+)
 async def record_covenant_test_result(
     agreement_id: UUID,
     covenant_id: UUID,
     dto: CovenantTestResultRequest,
     service: ServiceDep,
-    writer_identity: WriterDep,
 ) -> CovenantTestResultResponse:
     result = await service.record_covenant_test_result(agreement_id, covenant_id, dto)
     return CovenantTestResultResponse.model_validate(result, from_attributes=True)
 
 
-@router.post("/{agreement_id}/default-events", status_code=201)
+@router.post("/{agreement_id}/default-events", status_code=201, dependencies=[RequireWriter])
 async def record_default_event(
     agreement_id: UUID,
     dto: DefaultEventRequest,
     service: ServiceDep,
-    writer_identity: WriterDep,
 ) -> DefaultEventResponse:
     event = await service.record_default_event(agreement_id, dto)
     return DefaultEventResponse.model_validate(event, from_attributes=True)
