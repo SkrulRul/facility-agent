@@ -7,6 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 
 from app.auth import require_role
 from app.dependencies import get_extraction_job_service
+from app.rate_limit import enforce_extraction_rate_limit
 from app.routers.schemas import ExtractionJobResponse, SubmitExtractionRequest
 from app.services.extraction_job import ExtractionJob
 from app.services.extraction_job_service import ExtractionJobService
@@ -24,7 +25,7 @@ def _to_response(job: ExtractionJob) -> ExtractionJobResponse:
     return ExtractionJobResponse.model_validate(job, from_attributes=True)
 
 
-@router.post("", status_code=202)
+@router.post("", status_code=202, dependencies=[Depends(enforce_extraction_rate_limit)])
 async def submit_extraction(
     dto: SubmitExtractionRequest,
     background_tasks: BackgroundTasks,

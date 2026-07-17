@@ -17,7 +17,7 @@ A single `X-API-Key` request header. `AuthSettings` (`app/config.py`) holds two 
 
 | Name | Behavior |
 |---|---|
-| `get_current_identity` | FastAPI dependency. Reads `X-API-Key` (via `APIKeyHeader(auto_error=False)` so FastAPI never raises its own default-403-on-missing behavior). Missing header or a key not present in `_load_role_keys()` → `HTTPException(401, "Not authenticated")`. Otherwise returns an `Identity(role=...)`. |
+| `get_current_identity` | FastAPI dependency. Reads `X-API-Key` (via `APIKeyHeader(auto_error=False)` so FastAPI never raises its own default-403-on-missing behavior). Missing header or a key not present in `_load_role_keys()` → `HTTPException(401, "Not authenticated")`. Otherwise returns an `Identity(role=..., key_fingerprint=...)` — `key_fingerprint` is a truncated SHA-256 hex digest of the raw key (`_fingerprint()`), added in Phase 10 so `app/rate_limit.py` (see [`docs/specs/rate_limit.md`](rate_limit.md)) can bucket per provisioned credential rather than per role, without ever storing or logging the raw key itself. |
 | `require_role(*allowed_roles)` | Dependency factory. Depends on `get_current_identity`; if the resolved role isn't in `allowed_roles` → `HTTPException(403, "Forbidden")`; otherwise returns the `Identity` unchanged. |
 
 ## Wiring

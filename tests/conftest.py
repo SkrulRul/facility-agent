@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 
 from app.dependencies import get_agreement_repository
 from app.main import app
+from app.rate_limit import InMemoryRateLimiter, get_rate_limiter
 from app.repositories.in_memory_agreement_repository import InMemoryAgreementRepository
 
 TEST_ANALYST_API_KEY = "test-analyst-key"
@@ -39,7 +40,9 @@ def client(monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
     (tests/test_auth.py) override the header per-request instead.
     """
     repository = InMemoryAgreementRepository()
+    rate_limiter = InMemoryRateLimiter(max_requests=10_000, window_seconds=3600)
     app.dependency_overrides[get_agreement_repository] = lambda: repository
+    app.dependency_overrides[get_rate_limiter] = lambda: rate_limiter
     monkeypatch.setattr("app.main.get_engine", lambda: None)
     monkeypatch.setattr("app.auth._load_role_keys", lambda: _TEST_ROLE_KEYS)
     with TestClient(app, headers={"X-API-Key": TEST_ANALYST_API_KEY}) as test_client:

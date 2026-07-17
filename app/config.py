@@ -25,6 +25,13 @@ class AuthSettings(BaseSettings):
     credit_risk_officer_api_keys: SecretStr = SecretStr("")
 
 
+class RateLimitSettings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    extraction_rate_limit_max_requests: int = 20
+    extraction_rate_limit_window_seconds: int = 3600
+
+
 class DatabaseSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
