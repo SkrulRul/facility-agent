@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, Field
 
 from app.domain import AgreementStatus, Currency
+from app.services.extraction_job import ExtractionJobStatus, ExtractionTargetType
 
 # ---------------------------------------------------------------------------
 # Nested value-object DTOs (shared by request and response — identical shape).
@@ -174,3 +175,23 @@ class PaginatedResponse[ItemT](BaseModel):
     count: int
     limit: int
     offset: int
+
+
+# ---------------------------------------------------------------------------
+# Extraction DTOs
+# ---------------------------------------------------------------------------
+
+
+class SubmitExtractionRequest(BaseModel):
+    target_type: ExtractionTargetType
+    document_text: Annotated[str, Field(min_length=1)]
+
+
+class ExtractionJobResponse(BaseModel):
+    id: UUID
+    target_type: ExtractionTargetType
+    status: ExtractionJobStatus
+    submitted_at: datetime
+    completed_at: datetime | None
+    result: dict[str, Any] | None
+    error_message: str | None

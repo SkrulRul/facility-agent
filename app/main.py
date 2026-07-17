@@ -10,7 +10,9 @@ from app.config import LogSettings
 from app.dependencies import get_engine
 from app.logging import CorrelationIdMiddleware, configure_logging, get_logger
 from app.routers.agreements import router as agreements_router
+from app.routers.extractions import router as extractions_router
 from app.services.agreement_service import DomainNotFoundError
+from app.services.extraction_job import ExtractionJobNotFoundError
 
 configure_logging(LogSettings().log_level)
 logger = get_logger(__name__)
@@ -52,6 +54,7 @@ async def _validation_error_handler(_request: Request, exc: Exception) -> JSONRe
 
 
 app.add_exception_handler(DomainNotFoundError, _domain_not_found_handler)
+app.add_exception_handler(ExtractionJobNotFoundError, _domain_not_found_handler)
 app.add_exception_handler(ValidationError, _validation_error_handler)
 # No handler registered for the bare Exception type here: Starlette routes
 # that specifically to ServerErrorMiddleware, which sits *outside* user
@@ -60,6 +63,7 @@ app.add_exception_handler(ValidationError, _validation_error_handler)
 # CorrelationIdMiddleware (app/logging.py) is the catch-all instead — see
 # docs/specs/logging.md for the full mechanics.
 app.include_router(agreements_router)
+app.include_router(extractions_router)
 
 
 @app.get("/health")
