@@ -148,6 +148,7 @@ Full ADRs live under [`docs/adr/`](docs/adr/), one file per decision (`NNNN-slug
 | [0026](docs/adr/0026-role-based-api-key-authentication.md) | Role-based authentication via static API keys (`X-API-Key` header, no account model) | 9 |
 | [0027](docs/adr/0027-extraction-job-background-tasks.md) | Extraction jobs: FastAPI `BackgroundTasks` + in-memory job store (`ExtractionService`'s first real caller) | 10 |
 | [0028](docs/adr/0028-per-identity-fixed-window-rate-limiting.md) | Per-identity fixed-window rate limiting on `POST /extractions` (in-memory, keyed by API-key fingerprint) | 11 |
+| [0029](docs/adr/0029-liveness-readiness-health-endpoints.md) | Liveness (`GET /health`) and readiness (`GET /health/ready`) endpoints, unauthenticated, readiness DB-aware via `get_engine()` | 11 |
 
 New ADRs: add a `docs/adr/NNNN-slug.md` file with the next sequential number (check the existing folder before assigning — do not reuse or skip numbers), then add a row here.
 

@@ -11,6 +11,7 @@ from app.dependencies import get_engine
 from app.logging import CorrelationIdMiddleware, configure_logging, get_logger
 from app.routers.agreements import router as agreements_router
 from app.routers.extractions import router as extractions_router
+from app.routers.health import router as health_router
 from app.services.agreement_service import DomainNotFoundError
 from app.services.extraction_job import ExtractionJobNotFoundError
 
@@ -64,8 +65,4 @@ app.add_exception_handler(ValidationError, _validation_error_handler)
 # docs/specs/logging.md for the full mechanics.
 app.include_router(agreements_router)
 app.include_router(extractions_router)
-
-
-@app.get("/health")
-async def health() -> dict[str, str]:
-    return {"status": "ok"}
+app.include_router(health_router)
